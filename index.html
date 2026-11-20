@@ -30,7 +30,6 @@ body{
   font:15px/1.5 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
-/* langit: aurora + bituin (nasa likod ng lahat) */
 body::before,body::after{content:"";position:fixed;pointer-events:none;z-index:0}
 body::before{
   inset:-10%;
@@ -71,14 +70,12 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .pill.on{border-color:rgba(125,255,79,.35)}
 .pill.on i{background:var(--ok);animation:ping 2s ease-out infinite}
 
-/* tabs */
 nav{position:sticky;top:0;z-index:5;margin:0 -16px 18px;padding:max(10px,env(safe-area-inset-top)) 16px 10px;background:rgba(11,6,16,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{width:auto;margin:0;flex:none;padding:9px 16px;border-radius:99px;border:1px solid transparent;background:transparent;color:var(--mut);font-weight:600;font-size:14px}
 nav button:hover{color:var(--text)}
 nav button[aria-selected="true"]{color:var(--text);border-color:rgba(255,138,31,.35);background:linear-gradient(135deg,rgba(138,43,226,.42),rgba(255,138,31,.14))}
 
-/* hero: ang buwan ang bida */
 .hero{
   display:grid;grid-template-columns:auto 1fr;gap:20px 26px;align-items:center;padding:24px;
   border:1px solid transparent;border-radius:var(--r-lg);
@@ -111,7 +108,6 @@ nav button[aria-selected="true"]{color:var(--text);border-color:rgba(255,138,31,
 .actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .actions button{margin-top:0}
 
-/* panels */
 .c{position:relative;border:1px solid var(--line);border-radius:var(--r-md);background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px;margin:14px 0;box-shadow:0 14px 34px -22px rgba(0,0,0,.8)}
 .c::before{content:"";position:absolute;left:20px;right:20px;top:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,138,31,.45),transparent)}
 .c h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.015em;display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -121,7 +117,6 @@ nav button[aria-selected="true"]{color:var(--text);border-color:rgba(255,138,31,
 .g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--gold)}
 
-/* controls */
 button,select,input,textarea{width:100%;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--line);background:rgba(11,6,16,.7);color:var(--text);font:inherit;margin-top:10px;transition:border-color .15s,box-shadow .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(197,139,255,.18);outline:0}
 textarea{resize:vertical;line-height:1.45}
@@ -139,20 +134,17 @@ input[type=checkbox]{appearance:none;-webkit-appearance:none;position:relative;f
 input[type=checkbox]:checked{background:var(--ok);border-color:transparent}
 input[type=checkbox]:checked::after{content:"";position:absolute;left:7px;top:3px;width:5px;height:10px;border:solid #0f2406;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 
-/* switch row */
 .row{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .sw{width:60px;height:34px;margin:0;padding:0;border-radius:99px;position:relative;background:rgba(11,6,16,.8);flex:none}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--mut);box-shadow:0 2px 6px rgba(0,0,0,.45);transition:all .22s}
 .sw[aria-checked="true"]{background:linear-gradient(135deg,#a8ff7a,#5fd12f);border-color:transparent;box-shadow:0 0 20px rgba(125,255,79,.35)}
 .sw[aria-checked="true"]::after{left:29px;background:#0f2406}
 
-/* GC list */
 .gclist{margin-top:12px;display:grid;gap:8px}
 .gcrow{display:flex;gap:12px;align-items:center;margin:0;padding:13px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:rgba(11,6,16,.55);color:var(--text);font-size:14px}
 .gcrow:has(input:checked){border-color:rgba(125,255,79,.4);background:rgba(125,255,79,.07)}
 .gcrow span{overflow:hidden;text-overflow:ellipsis}
 
-/* group features (lock gc name / set all nicknames) */
 .gfrow{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:rgba(11,6,16,.55)}
 .gfrow.picked{border-color:rgba(255,138,31,.55)}
 .gfrow .nm{flex:1;min-width:0;cursor:pointer}
@@ -161,11 +153,9 @@ input[type=checkbox]:checked::after{content:"";position:absolute;left:7px;top:3p
 details.more{margin-top:14px}
 details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:14px}
 
-/* alerts */
 .banner{display:none;border:1px solid var(--bad);background:rgba(255,122,147,.1);color:#ffc6d1;border-radius:var(--r-md);padding:14px 16px;margin:0 0 14px}
 .banner.soft{border-color:var(--gold);background:rgba(255,138,31,.09);color:#ffd1a0}
 
-/* activity */
 #log{margin-top:8px}
 .ev{display:grid;grid-template-columns:72px 1fr;gap:10px;padding:11px 0;border-top:1px solid var(--line);font-size:13px}
 .ev:first-child{border-top:0}
@@ -174,7 +164,6 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
 .ev.error b{color:var(--bad)}.ev.cmd b{color:var(--ok)}.ev.system b{color:var(--gold)}
 .errbox{margin-top:8px;color:var(--bad);font-size:13px}
 
-/* commands */
 .cmds{display:grid;gap:18px}
 .cmds h3{margin:0 0 8px;font-size:14px;font-weight:800;color:var(--gold)}
 .cmds code{display:block;padding:8px 11px;margin-top:5px;border-radius:10px;background:rgba(11,6,16,.55);font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--text);overflow-wrap:anywhere}
@@ -188,11 +177,13 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
 @media(min-width:720px){.v{font-size:20px}.stats{grid-template-columns:repeat(4,1fr)}.actions{grid-template-columns:repeat(4,1fr)}.hero{padding:30px}.moon{width:108px;height:108px}.moon.crescent{box-shadow:inset -29px 11px 0 0 var(--gold),0 0 34px rgba(255,138,31,.28)}.hero h1{font-size:30px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 
-/* 🎃 Halloween: lumulutang na multo at kalabasa */
 .hw{position:fixed;z-index:0;pointer-events:none;font-size:34px;opacity:.16;animation:floaty 9s ease-in-out infinite alternate}
 .hw:nth-of-type(2){animation-duration:12s;animation-delay:-3s}
 .hw:nth-of-type(3){animation-duration:15s;animation-delay:-6s}
 @keyframes floaty{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-26px) rotate(6deg)}}
+
+/* pre for JSON outputs (spam / massnn / etc) */
+pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:rgba(11,6,16,.55);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;color:var(--text)}
 </style>
 </head>
 <body>
@@ -206,6 +197,9 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
 <nav role="tablist" aria-label="Mga seksyon">
   <button role="tab" data-tab="home" aria-selected="true">Home</button>
   <button role="tab" data-tab="chats" aria-selected="false">Mga GC</button>
+  <button role="tab" data-tab="locks" aria-selected="false">🔒 Locks</button>
+  <button role="tab" data-tab="spam" aria-selected="false">📣 Spam</button>
+  <button role="tab" data-tab="react" aria-selected="false">❤️ React</button>
   <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
   <button role="tab" data-tab="session" aria-selected="false">Session</button>
   <button role="tab" data-tab="activity" aria-selected="false">Activity</button>
@@ -246,6 +240,11 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
       </div>
       <button class="sw" id="autosw" role="switch" aria-checked="false" aria-label="Auto reply" onclick="post('auto',{on:!S.autoReply})"></button>
     </div>
+  </div>
+
+  <div class="c">
+    <h2>Spam runs <span id="spbadge"></span></h2>
+    <div class="m" id="spsummary">Walang tumatakbo.</div>
   </div>
 
   <div class="c"><h2>Kalusugan ng session</h2><div class="m" id="health" style="line-height:1.8"></div></div>
@@ -295,6 +294,79 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
   </div>
 </section>
 
+<!-- LOCKS (Phobia: title lock, nickname lock, mass set nickname) -->
+<section id="tab-locks" role="tabpanel" hidden>
+  <div class="c">
+    <h2>🔒 Group Title Lock</h2>
+    <div class="m">I-lock ang pangalan ng GC. Kapag may nagpalit, ibabalik sa tamang title sa loob ng <b>~120s</b>. Chat command: <b>!titlelock on &lt;title&gt;</b> / <b>!titlelock off</b> / <b>!titlelock status</b>.</div>
+    <label>Thread ID ng GC<input id="tl-thread" type="text" placeholder="hal. 1234567890"></label>
+    <label>Eksaktong title na i-lock<input id="tl-title" type="text" placeholder="hal. Phobia Official GC"></label>
+    <div class="g">
+      <button class="acc" onclick="tlSave()">Save lock</button>
+      <button class="ghost" onclick="tlLoad()">Refresh list</button>
+    </div>
+    <div id="tl-list" class="m" style="margin-top:12px">Loading…</div>
+  </div>
+
+  <div class="c">
+    <h2>🔒 Nickname Lock</h2>
+    <div class="m">I-lock ang nickname ng specific user. Kapag may nagpalit, ibabalik sa tamang nickname. Chat command: <b>!nicklock on @user &lt;nick&gt;</b> / <b>!nicklock off @user</b> / <b>!nicklock list</b>.</div>
+    <label>Thread ID ng GC<input id="nl-thread" type="text" placeholder="hal. 1234567890"></label>
+    <div class="g">
+      <label>User ID<input id="nl-user" type="text" placeholder="hal. 100012345678"></label>
+      <label>Nickname<input id="nl-nick" type="text" maxlength="64" placeholder="hal. Boss"></label>
+    </div>
+    <div class="g">
+      <button class="acc" onclick="nlSave()">Save lock</button>
+      <button class="ghost" onclick="nlLoad()">Refresh list</button>
+    </div>
+    <div id="nl-list" class="m" style="margin-top:12px">Loading…</div>
+  </div>
+
+  <div class="c">
+    <h2>👥 Mass Set Nickname</h2>
+    <div class="m">Palitan ang nickname ng maraming member sa isang GC (max 50, may 1.5s pagitan kada user). Chat command: <b>!massnn &lt;nick&gt; @user1 @user2</b>.</div>
+    <label>Thread ID ng GC<input id="mn-thread" type="text" placeholder="hal. 1234567890"></label>
+    <label>Nickname<input id="mn-nick" type="text" maxlength="64" placeholder="hal. Phobia Member"></label>
+    <label>User IDs (comma o newline, max 50)<textarea id="mn-users" rows="4" placeholder="100012345678&#10;100098765432"></textarea></label>
+    <button class="acc" onclick="mnRun()">Apply to members</button>
+    <pre class="out" id="mn-result" hidden></pre>
+  </div>
+</section>
+
+<!-- SPAM (Phobia) -->
+<section id="tab-spam" role="tabpanel" hidden>
+  <div class="c">
+    <h2>📣 Spam Mode</h2>
+    <div class="m">Mag-spam ng message sa isang GC. Chat command: <b>!spam start &lt;sec&gt; &lt;loops&gt;</b> (i-reply sa message) / <b>!spam stop</b> / <b>!spam stopall</b> / <b>!spam status</b>.</div>
+    <label>Thread ID ng GC<input id="sp-thread" type="text" placeholder="hal. 1234567890"></label>
+    <div class="g">
+      <label>Interval (segundo, min 2, max 3600)<input id="sp-interval" type="number" min="2" max="3600" value="5"></label>
+      <label>Loops (1-100, para sa numbered list)<input id="sp-loops" type="number" min="1" max="100" value="1"></label>
+    </div>
+    <label>Message o numbered list<textarea id="sp-message" rows="5" placeholder="Pwedeng single message:&#10;hello world&#10;&#10;O numbered list:&#10;1. hi&#10;2. hello&#10;3. yo"></textarea></label>
+    <div class="g">
+      <button class="go" onclick="spStart()">▶ Start</button>
+      <button class="stop" onclick="spStop()">■ Stop this GC</button>
+    </div>
+    <button class="stop" onclick="spStopAll()">■ Stop ALL runs</button>
+    <pre class="out" id="sp-status" style="margin-top:12px">Walang tumatakbo.</pre>
+  </div>
+</section>
+
+<!-- REACT (Phobia) -->
+<section id="tab-react" role="tabpanel" hidden>
+  <div class="c">
+    <h2>❤️ React sa message</h2>
+    <div class="m">Mag-react sa isang message gamit ang message ID. Makukuha mo ito mula sa event ng bot, o sa chat gamit ang <b>!react &lt;emoji&gt;</b> (i-reply sa message).</div>
+    <label>Message ID<input id="rx-mid" type="text" placeholder="hal. mid.$abc123..."></label>
+    <label>Thread ID ng GC<input id="rx-thread" type="text" placeholder="hal. 1234567890"></label>
+    <label>Emoji<input id="rx-emoji" type="text" maxlength="8" value="❤️"></label>
+    <button class="acc" onclick="rxSend()">React</button>
+    <pre class="out" id="rx-result" hidden></pre>
+  </div>
+</section>
+
 <!-- SETTINGS -->
 <section id="tab-settings" role="tabpanel" hidden>
   <div class="c">
@@ -321,7 +393,7 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
 
   <div class="c">
     <h2>Mga admin</h2>
-    <div class="m">Mga Facebook ID na puwedeng gumamit ng admin commands (<b>!gcname</b>, <b>!troll</b>, <b>!eco</b>) sa chat. Laging admin ang mismong bot account. Isang ID kada linya, o paghiwalayin ng comma.</div>
+    <div class="m">Mga Facebook ID na puwedeng gumamit ng admin commands (<b>!gcname</b>, <b>!troll</b>, <b>!eco</b>, <b>!titlelock</b>, <b>!nicklock</b>, <b>!massnn</b>, <b>!spam</b>) sa chat. Laging admin ang mismong bot account. Isang ID kada linya, o paghiwalayin ng comma.</div>
     <div class="m" style="margin-top:6px">Para sa owner commands (<b>!setbal</b>, <b>!additem</b>), mag-set ng <b>OWNER_IDS</b> sa Railway Variables.</div>
     <textarea id="admins" rows="3" placeholder="61596019734288"></textarea>
     <div class="m" id="adminst" style="margin-top:8px"></div>
@@ -368,7 +440,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 (async()=>{let n;
  try{n=await (await fetch('/api/needsetup')).json();localStorage.open=n.open?'1':'0'}catch{n={open:localStorage.open==='1'}}
  if(!n.open&&!K&&navigator.onLine)K=localStorage.k=prompt("Dashboard password")||"";
- load();setTimeout(threads,1200);setTimeout(gfUI,1400);setTimeout(gLoad,1600)})();
+ load();setTimeout(threads,1200);setTimeout(gfUI,1400);setTimeout(gLoad,1600);setTimeout(tlLoad,1800);setTimeout(nlLoad,2000);spPoll()})();
 
 /* ---------- tabs ---------- */
 const tabs=[...document.querySelectorAll('nav button')];
@@ -417,8 +489,11 @@ function renderCmds(p){
    ['Economy',[['balance · daily · work','kita'],['bet <amt> · slot <amt> · cf heads|tails <amt>','laro'],['rob @tao','nakawan (30 min cooldown)'],['deposit / withdraw <amt|all>','bank'],['give @tao <amt> · top','padala at ranking']]],
    ['Shop',[['shop · item <#>','tingnan'],['buy <#> [dami] · sell <item> · inv','bili, benta, bag']]],
    ['Moderation (admin ng GC)',[['kick @tao','tanggalin'],['ban @tao [dahilan] · unban <#|@tao> · banlist','ban'],['warn @tao · warns · unwarn @tao [all]','3 warns = kick'],['unsend (i-reply) · mods','burahin ang mensahe ng bot']]],
-   ['Utility',[['ask <tanong> · weather <lugar> · define <word>',''],['calc <math> · time · convert 100 usd php',''],['remind 10m <text> · roll · flip · 8ball · pick a | b','']]],
+   ['Utility',[['ask <tanong> · weather <lugar> · define <word>',''],['calc <math> · time · timecheck',''],['convert 100 usd php · rate 1000 eur to jpy',''],['remind 10m <text> · roll · flip · 8ball · pick a | b','']]],
    ['🔒 Admin',[['on · off','buksan/patayin ang bot sa GC'],['gcname start|stop|add|set|interval','GC name cycle'],['troll on|off · eco add|remove|reset @tao','']]],
+   ['🔒 Locks',[['titlelock on <title> · titlelock off · titlelock status','title lock'],['nicklock on @user <nick> · nicklock off @user · nicklock list','nickname lock'],['massnn <nick> @user1 @user2 ...','mass set nickname (max 50)']]],
+   ['📣 Spam',[['spam start <sec> <loops>','i-reply sa message na gusto mong i-spam'],['spam stop · spam stopall · spam status','']]],
+   ['❤️ React',[['react <emoji>','i-reply sa message']]],
    ['🔒 Owner',[['setbal @tao <amt> [wallet|bank]','i-set ang balance'],['additem Pangalan | presyo | emoji | desc | max','dagdag item'],['edititem <#> price|name|emoji|desc|max <value>',''],['delitem <#>','tanggal item (50% refund)']]],
   ];
   $('cmdlist').innerHTML=G.map(([t,rows])=>`<div><h3>${esc(t)}</h3>${rows.map(([c,d])=>`<code>${esc(p)}${esc(c)}${d?` <span>— ${esc(d)}</span>`:''}</code>`).join('')}</div>`).join('');
@@ -433,6 +508,16 @@ function setMoon(s){
   else if(s.online){cls='new';h='Naka-pause ang bot';sub='Online sa Messenger pero hindi sumasagot. Pindutin ang Start.'}
   $('moon').className='moon '+cls;$('state').textContent=h;$('statesub').textContent=sub;
 }
+
+function renderSpamHome(spam){
+  const n=(spam||[]).length;
+  $('spbadge').textContent=n?`(${n})`:'';
+  $('spbadge').className=n?'ok':'';
+  $('spsummary').textContent=n
+    ?spam.map(r=>`• ${r.threadID.slice(-6)}: ${r.sent}/${r.totalMessages} every ${r.intervalSeconds}s (${r.mode})`).join('\n')
+    :'Walang tumatakbo.';
+}
+
 async function load(){let s=await api('status'),stale=0;
  if(!s||s.error){if(!netDown)return;const c=readCache();setNet(true,c&&c.t);if(!c)return;s=c.s;stale=c.t}
  else{setNet(false);try{localStorage.lastStatus=JSON.stringify({t:Date.now(),s})}catch{}}
@@ -454,6 +539,7 @@ async function load(){let s=await api('status'),stale=0;
  $('ss').textContent=s.cookieSaved?`Cookie saved (${ago(s.savedAt)}) · ${s.uid||'not connected'}`:'Walang cookie. Mag-paste sa ibaba para makakonekta.';
  $('err').textContent=s.lastError||'';
  setMoon(s);
+ renderSpamHome(s.spam);
  if(stale){$('moon').className='moon off';$('state').textContent='Walang koneksyon sa server';$('statesub').textContent='Huling nakita: '+ago(stale)+'. Ito ang huling status na na-save sa device mo.';$('conn').className='pill';$('connt').textContent='Offline';$('on').textContent='OFFLINE';$('on').className='v bad';$('run').textContent='DI ALAM';$('run').className='v warn'}
  $('log').innerHTML=s.log.length?s.log.map(l=>`<div class="ev ${esc(l.who)}"><time>${new Date(l.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}</time><div><b>${esc(l.who)}</b> ${esc(l.msg)}</div></div>`).join(''):'<div class="m">Wala pang activity.</div>'}
 
@@ -516,6 +602,125 @@ $('gflist').addEventListener('click',e=>{
 });
 setInterval(()=>{if(S.online)gActive()},5000);
 
+/* ============================================================
+   LOCKS: title lock + nickname lock + mass set nickname
+   ============================================================ */
+async function tlLoad(){
+  const r=await api('titlelock');
+  const box=$('tl-list');
+  if(!r||r.error){box.textContent='Error: '+((r&&r.error)||'hindi ma-load');return}
+  const gs=r.groups||[];
+  box.innerHTML=gs.length
+    ?gs.map(g=>`<div style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-top:6px;display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div><b>${esc(g.threadID)}</b><br><span class="m">Title: ${esc(g.expectedTitle)}</span></div>
+        <button class="stop" data-tl="${esc(g.threadID)}" style="width:auto;margin:0;padding:8px 12px">Remove</button>
+      </div>`).join('')
+    :'Wala pang naka-lock na title.';
+  box.querySelectorAll('[data-tl]').forEach(b=>b.addEventListener('click',async()=>{
+    const r2=await api('titlelock/'+encodeURIComponent(b.dataset.tl),{_method:'DELETE'});
+    // fallback: POST delete route kasi yung api() POST lang by default
+    try{await fetch('/api/titlelock/'+encodeURIComponent(b.dataset.tl),{method:'DELETE',headers:{'x-admin':K}})}catch{}
+    toast('Removed ✓');tlLoad();
+  }));
+}
+async function tlSave(){
+  const threadID=gv('tl-thread'), title=gv('tl-title');
+  if(!threadID||!title)return toast('Kailangan ng thread ID at title',true);
+  const r=await api('titlelock',{threadID,title,enabled:true});
+  if(r&&r.error)toast(r.error,true);else{toast('Saved ✓');$('tl-title').value='';tlLoad()}
+}
+
+async function nlLoad(){
+  const r=await api('nicklocks');
+  const box=$('nl-list');
+  if(!r||r.error){box.textContent='Error: '+((r&&r.error)||'hindi ma-load');return}
+  const ls=r.locks||[];
+  box.innerHTML=ls.length
+    ?ls.map(l=>`<div style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-top:6px;display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div><b>${esc(l.userID)}</b><br><span class="m">Nick: ${esc(l.expectedNickname)}<br>GC: ${esc(l.threadID)}</span></div>
+        <button class="stop" data-nl-th="${esc(l.threadID)}" data-nl-user="${esc(l.userID)}" style="width:auto;margin:0;padding:8px 12px">Remove</button>
+      </div>`).join('')
+    :'Walang naka-lock na nickname.';
+  box.querySelectorAll('[data-nl-user]').forEach(b=>b.addEventListener('click',async()=>{
+    try{await fetch('/api/nicklocks/'+encodeURIComponent(b.dataset.nlTh)+'/'+encodeURIComponent(b.dataset.nlUser),{method:'DELETE',headers:{'x-admin':K}})}catch{}
+    toast('Removed ✓');nlLoad();
+  }));
+}
+async function nlSave(){
+  const threadID=gv('nl-thread'), userID=gv('nl-user'), nickname=gv('nl-nick');
+  if(!threadID||!userID||!nickname)return toast('Fill all three fields',true);
+  const r=await api('nicklocks',{threadID,userID,nickname});
+  if(r&&r.error)toast(r.error,true);else{toast('Saved ✓');$('nl-nick').value='';nlLoad()}
+}
+
+async function mnRun(){
+  const threadID=gv('mn-thread'), nickname=gv('mn-nick');
+  const userIDs=$('mn-users').value.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);
+  const out=$('mn-result');
+  if(!threadID||!nickname||!userIDs.length)return toast('Fill thread, nickname, and at least 1 user ID',true);
+  if(userIDs.length>50)return toast('Max 50 users per run',true);
+  out.hidden=false;out.textContent='Running…';
+  const r=await api('mass-setnn',{threadID,nickname,userIDs});
+  if(!r){out.textContent='Offline — hindi naipadala.';return}
+  if(r.error){out.textContent='Error: '+r.error;toast(r.error,true);return}
+  out.textContent=`✅ Total: ${r.total} · OK: ${r.succeeded} · Fail: ${r.failed} · Lock saved: ${r.lockSaved} · Lock failed: ${r.lockSaveFailed}\n\n`+
+    (r.results||[]).map(x=>`${x.ok?'✓':'✗'} ${x.userID}${x.ok?'':': '+x.error}`).join('\n');
+  toast('Tapos ✓');
+}
+
+/* ============================================================
+   SPAM
+   ============================================================ */
+async function spStart(){
+  const threadID=gv('sp-thread');
+  const message=$('sp-message').value;
+  const intervalSeconds=+$('sp-interval').value;
+  const loops=+$('sp-loops').value||1;
+  const out=$('sp-status');
+  if(!threadID||!message.trim())return toast('Fill thread ID and message',true);
+  const r=await api('spam/start',{threadID,message,intervalSeconds,loops});
+  if(!r){out.textContent='Offline — hindi naipadala.';return}
+  if(r.error){out.textContent='Error: '+r.error;toast(r.error,true);return}
+  out.textContent=JSON.stringify(r,null,2);
+  toast('Spam started ✓');
+  spPoll();
+}
+async function spStop(){
+  const threadID=gv('sp-thread');
+  const r=await api('spam/stop',{threadID});
+  if(r&&r.error){toast(r.error,true);return}
+  toast('Stopped ✓');spPoll();
+}
+async function spStopAll(){
+  const r=await api('spam/stop',{all:true});
+  if(r&&r.error){toast(r.error,true);return}
+  toast('All stopped ✓');spPoll();
+}
+async function spPoll(){
+  const r=await api('spam/status');
+  const out=$('sp-status');
+  if(!r){out.textContent='Offline.';return}
+  if(r.error){out.textContent='Error: '+r.error;return}
+  out.textContent=Array.isArray(r)&&r.length?JSON.stringify(r,null,2):'Walang tumatakbo.';
+  renderSpamHome(r);
+}
+setInterval(spPoll,5000);
+
+/* ============================================================
+   REACT
+   ============================================================ */
+async function rxSend(){
+  const messageID=gv('rx-mid'), threadID=gv('rx-thread'), emoji=gv('rx-emoji')||'❤️';
+  const out=$('rx-result');
+  if(!messageID||!threadID)return toast('Kailangan ng message ID at thread ID',true);
+  out.hidden=false;out.textContent='Sending…';
+  const r=await api('react',{messageID,threadID,emoji});
+  if(!r){out.textContent='Offline — hindi naipadala.';return}
+  if(r.error){out.textContent='Error: '+r.error;toast(r.error,true);return}
+  out.textContent='✓ '+JSON.stringify(r,null,2);
+  toast('Reacted ✓');
+}
+
 /* ---------- offline app (PWA) ---------- */
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 let deferredInstall=null;
@@ -527,4 +732,4 @@ if(!isStandalone&&/iphone|ipad|ipod/i.test(navigator.userAgent)){$('installcard'
 addEventListener('online',load);addEventListener('offline',load);
 </script>
 </body>
-</html>
+  </html>
