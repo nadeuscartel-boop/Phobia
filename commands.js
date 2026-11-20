@@ -4,19 +4,27 @@
  * Assistant commands for the troll bot.
  *
  * Every command is  async (ctx) => string | { body, attachment, cleanup } | null
- *   ctx = { args, ev, cfg, save, gc, S, prefix, isAdmin }
+ *   ctx = { args, ev, cfg, save, gc, S, prefix, isAdmin, isOwner, lockStore, spamMode, api }
  *
  * Public:  help music time weather define calc roll flip 8ball pick remind ask uptime
+ *          convert rate currency owner creator timecheck
  * Economy: balance daily work bet slot cf rob give deposit withdraw shop buy sell inv top
  * Mod:     kick ban unban banlist warn warns unwarn unsend mods   (GC admins + bot admins)
  * Owner:   setbal additem edititem delitem
- * Admin:   gcname troll
+ * Admin:   gcname troll on off
+ * Lock:    titlelock nicklock massnn
+ * Spam:    spam
+ * React:   react
+ *
  * "Admin" = the bot account itself, or an ID listed in cfg.admins / ADMIN_IDS.
  */
 
 const { musicCommand } = require("./music");
 const economy = require("./economy");
 const moderation = require("./moderation");
+const { isTimeCheck, formatTimeCheck } = require("./time-check");
+const { executeMassSetNickname } = require("./mass-setnn");
+const { extractMessageID, dispatchMessageReaction } = require("./message-reactions");
 
 async function getJson(url, ms = 10_000, init = {}) {
   const ctl = new AbortController();
@@ -29,6 +37,23 @@ async function getJson(url, ms = 10_000, init = {}) {
     clearTimeout(t);
   }
 }
+
+// ---------- helpers ----------
+function getMentionIDs(ev) {
+  const ids = [];
+  if (ev?.mentions && typeof ev.mentions === "object") {
+    for (const key of Object.keys(ev.mentions)) ids.push(String(key));
+  }
+  const body = String(ev?.body || "");
+  const re = /@(\d{5,})/g;
+  let m;
+  while ((m = re.exec(body)) !== null) ids.push(m[1]);
+  const replySender = ev?.messageReply?.senderID;
+  if (replySender) ids.push(String(replySender));
+  return [...new Set(ids.filter(Boolean))];
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- calc: tiny safe expression parser (no eval) ----------
 function calc(input) {
@@ -199,7 +224,7 @@ const COMMANDS = {
         `${prefix}weather <lugar>`,
         `${prefix}calc <math>`,
         `${prefix}define <word>`,
-        `${prefix}time [timezone]`,
+        `${prefix}time [timezone] · ${prefix}timecheck`,
         `${prefix}remind <10m|2h|1d> <text>`,
         `${prefix}roll [NdM] · ${prefix}flip · ${prefix}8ball <tanong> · ${prefix}pick a | b | c`,
         `${prefix}convert 100 usd php — currency`,
@@ -210,6 +235,10 @@ const COMMANDS = {
         `🛒 Shop: ${prefix}shop · ${prefix}item <#> · ${prefix}buy <#> [dami] · ${prefix}sell <item> · ${prefix}inv`,
         `\n🛡 Mod (admin ng GC): ${prefix}kick @tao · ${prefix}ban @tao [dahilan] · ${prefix}unban <#|@tao> · ${prefix}banlist`,
         `${prefix}warn @tao [dahilan] · ${prefix}warns [@tao] · ${prefix}unwarn @tao [all] · ${prefix}unsend (reply) · ${prefix}mods`,
+        `\n🔒 Locks (admin): ${prefix}titlelock on <title> · ${prefix}titlelock off · ${prefix}titlelock status`,
+        `${prefix}nicklock on @user <nick> · ${prefix}nicklock off @user · ${prefix}nicklock list · ${prefix}massnn <nick> @user1 @user2`,
+        `\n📣 Spam (admin): ${prefix}spam start <sec> <loops> (reply sa msg) · ${prefix}spam stop · ${prefix}spam stopall · ${prefix}spam status`,
+        `❤️ ${prefix}react <emoji> (reply sa msg)`,
         isOwner ? `\n👑 Owner: ${prefix}setbal @tao <amt> [wallet|bank]\n${prefix}additem <name> | <presyo> | [emoji] | [desc] | [max] · ${prefix}edititem <#> price|name|emoji|desc|max <value> · ${prefix}delitem <#>` : null,
         isAdmin ? `🔒 ${prefix}on / ${prefix}off — buksan/patayin ang bot sa GC na ito` : null,
         isAdmin ? `🔒 Eco: ${prefix}eco add|remove|reset @tao [amt]` : null,
@@ -237,6 +266,11 @@ const COMMANDS = {
     },
   },
   time: { run: async ({ args, cfg }) => timeNow(args, cfg.tz) },
+
+  // ============================================================
+  // NEW: !timecheck  (mula sa time-check.js)
+  // ============================================================
+  timecheck: { run: async () => formatTimeCheck() },
 
   roll: {
     run: async ({ args }) => {
@@ -309,6 +343,206 @@ const COMMANDS = {
     run: async ({ S }) => `⏱ Bot uptime: ${dur((Date.now() - (S.botSince || S.started)) / 1000)}\nServer: ${dur((Date.now() - S.started) / 1000)}`,
   },
 
+  // ============================================================
+  // NEW: !titlelock  (admin only — from group-title-guard.js)
+  //   !titlelock on <exact title>
+  //   !titlelock off
+  //   !titlelock status
+  // ============================================================
+  titlelock: {
+    admin: true,
+    run: async ({ args, ev, lockStore, prefix }) => {
+      if (!lockStore) return "⚠️ lockStore unavailable.";
+      const [sub = "status", ...rest] = String(args || "").trim().split(/\s+/);
+      const title = rest.join(" ").trim();
+      const threadID = String(ev.threadID);
+
+      switch (sub.toLowerCase()) {
+        case "on": {
+          if (!title) return `Format: ${prefix}titlelock on <exact title>`;
+          if (title.length > 100) return "⚠️ Title max 100 chars.";
+          lockStore.setGroupTitleLock(threadID, title, true);
+          return `🔒 Title lock ON for this GC:\n"${title}"\n\nKapag may nagbago, ibabalik sa <120s.`;
+        }
+        case "off": {
+          lockStore.setGroupTitleLock(threadID, "", false);
+          return "🔓 Title lock OFF for this GC.";
+        }
+        case "status":
+        default: {
+          const g = await lockStore.getGroup(threadID);
+          return g.autolockEnabled
+            ? `🔒 Title lock: ON\nExpected: "${g.expectedTitle}"`
+            : "🔓 Title lock: OFF";
+        }
+      }
+    },
+  },
+
+  // ============================================================
+  // NEW: !nicklock  (admin only — from nickname-lock-guard.js)
+  //   !nicklock on @user <nickname>
+  //   !nicklock off @user
+  //   !nicklock list
+  // ============================================================
+  nicklock: {
+    admin: true,
+    run: async ({ args, ev, lockStore, prefix }) => {
+      if (!lockStore) return "⚠️ lockStore unavailable.";
+      const threadID = String(ev.threadID);
+      const raw = String(args || "").trim();
+
+      if (/^list\b/i.test(raw)) {
+        const locks = await lockStore.getNicknameLocks(threadID);
+        if (!locks.length) return "Walang naka-lock na nickname sa GC na ito.";
+        return "🔒 Nickname locks:\n" + locks.map((l) => `• ${l.userID} → "${l.expectedNickname}"`).join("\n");
+      }
+
+      const m = /^(on|off)\s+@?(\d{5,})\s*(.*)$/i.exec(raw);
+      if (!m) {
+        return `Format:\n${prefix}nicklock on @user <nickname>\n${prefix}nicklock off @user\n${prefix}nicklock list`;
+      }
+      const [, action, userID, nick] = m;
+
+      if (action.toLowerCase() === "on") {
+        const nickname = nick.trim();
+        if (!nickname) return `Format: ${prefix}nicklock on @user <nickname>`;
+        if (nickname.length > 64) return "⚠️ Nickname max 64 chars.";
+        lockStore.saveNicknameLock(threadID, userID, nickname);
+        return `🔒 Nickname lock ON:\n${userID} → "${nickname}"`;
+      }
+
+      await lockStore.deleteNicknameLock(threadID, userID);
+      return `🔓 Nickname lock removed: ${userID}`;
+    },
+  },
+
+  // ============================================================
+  // NEW: !massnn  (admin only — from mass-setnn.js)
+  //   !massnn <nickname> @user1 @user2 ...  (or reply to msg)
+  // ============================================================
+  massnn: {
+    admin: true,
+    run: async ({ args, ev, api, lockStore, prefix }) => {
+      if (!lockStore) return "⚠️ lockStore unavailable.";
+      if (!api) return "⚠️ Bot not connected.";
+      const raw = String(args || "").trim();
+      if (!raw) return `Format: ${prefix}massnn <nickname> @user1 @user2 ...`;
+
+      // Split off the nickname from the @mentions
+      const nickMatch = /^(.+?)(?:\s+@\d{5,}.*)?$/.exec(raw);
+      const nickname = nickMatch ? nickMatch[1].trim().slice(0, 64) : "";
+      if (!nickname) return `Format: ${prefix}massnn <nickname> @user1 @user2 ...`;
+
+      const userIDs = getMentionIDs(ev);
+      if (!userIDs.length) return "⚠️ Tag at least 1 user (or reply to their message).";
+      if (userIDs.length > 50) return "⚠️ Max 50 users per run.";
+
+      try {
+        const result = await executeMassSetNickname({
+          api,
+          threadID: String(ev.threadID),
+          nickname,
+          userIDs,
+          getMembers: (tid) =>
+            new Promise((ok, fail) =>
+              api.getThreadInfo(tid, (e, d) => (e ? fail(e) : ok(d)))
+            ).then((info) => (info.participantIDs || []).map((id) => ({ userID: id }))),
+          saveNickname: (tid, uid, nick) => lockStore.saveNicknameLock(tid, uid, nick),
+          delayMs: 1500,
+        });
+        const lines = [
+          `✅ Mass setnn done`,
+          `Total: ${result.total} · OK: ${result.succeeded} · Fail: ${result.failed}`,
+          `Lock saved: ${result.lockSaved} · Lock failed: ${result.lockSaveFailed}`,
+        ];
+        const fails = result.results.filter((r) => !r.ok).slice(0, 3);
+        if (fails.length) lines.push("⚠️ Failures: " + fails.map((f) => `${f.userID}: ${f.error}`).join(" | "));
+        return lines.join("\n");
+      } catch (e) {
+        return `❌ Mass setnn failed: ${e.message}`;
+      }
+    },
+  },
+
+  // ============================================================
+  // NEW: !spam  (admin only — from spam-mode.js)
+  //   !spam start <sec> <loops>   (reply sa message na gusto mong i-spam)
+  //   !spam stop                  (stop sa GC na ito)
+  //   !spam stopall               (stop lahat)
+  //   !spam status
+  // ============================================================
+  spam: {
+    admin: true,
+    run: async ({ args, ev, spamMode, prefix }) => {
+      if (!spamMode) return "⚠️ spamMode unavailable.";
+      const [sub = "status", ...rest] = String(args || "").trim().split(/\s+/);
+      const threadID = String(ev.threadID);
+
+      switch (sub.toLowerCase()) {
+        case "start": {
+          const replyBody = String(ev?.messageReply?.body || "").trim();
+          if (!replyBody) return `Format: i-reply mo sa message na gusto mong i-spam, tapos:\n${prefix}spam start <sec> <loops>\n\nHal: ${prefix}spam start 5 3`;
+          const intervalSeconds = parseInt(rest[0], 10);
+          const loops = parseInt(rest[1], 10) || 1;
+          try {
+            const result = spamMode.start({
+              threadID,
+              message: replyBody,
+              intervalSeconds,
+              loops,
+            });
+            return `📣 Spam started\nMode: ${result.mode} · Total: ${result.totalMessages} · Every ${result.intervalSeconds}s\nFirst send in ${result.firstSendInSeconds}s`;
+          } catch (e) {
+            return `❌ ${e.message}`;
+          }
+        }
+        case "stop": {
+          const r = spamMode.stop(threadID);
+          return r.stopped ? `⏹ Spam stopped sa GC na ito (sent ${r.sent}).` : "Walang tumatakbo sa GC na ito.";
+        }
+        case "stopall": {
+          spamMode.stopAll("chat");
+          return "⏹ Lahat ng spam runs ay pinatay.";
+        }
+        case "status":
+        default: {
+          const list = spamMode.getStatus();
+          if (!list.length) return "📣 Walang spam na tumatakbo.";
+          return (
+            "📣 Spam runs:\n" +
+            list.map((s) => `• ${s.threadID}: ${s.sent}/${s.totalMessages} every ${s.intervalSeconds}s (${s.mode})`).join("\n")
+          );
+        }
+      }
+    },
+  },
+
+  // ============================================================
+  // NEW: !react  (reply sa message na gusto mong i-react)
+  //   !react <emoji>
+  // ============================================================
+  react: {
+    run: async ({ args, ev, api, prefix }) => {
+      if (!api) return "⚠️ Bot not connected.";
+      const emoji = String(args || "").trim() || "❤";
+      const replyInfo = ev?.messageReply;
+      if (!replyInfo) return `Format: i-reply mo sa message, tapos:\n${prefix}react <emoji>\n\nHal: ${prefix}react ❤`;
+      const messageID = extractMessageID(replyInfo);
+      if (!messageID) return "⚠️ Di ko makuha ang message ID ng reply.";
+      try {
+        dispatchMessageReaction(api, emoji, messageID, String(ev.threadID), {
+          onStatus: (state, meta) => {
+            if (state === "failed") console.warn("[REACT]", meta?.error?.message || meta);
+          },
+        });
+        return `❤️ Reacted ${emoji}`;
+      } catch (e) {
+        return `❌ ${e.message}`;
+      }
+    },
+  },
+
   // ---------------- admin ----------------
   on: {
     admin: true,
@@ -375,53 +609,4 @@ const COMMANDS = {
         case "status":
         default:
           return status();
-      }
-    },
-  },
-
-  troll: {
-    admin: true,
-    run: async ({ args, cfg, save }) => {
-      const v = String(args || "").trim().toLowerCase();
-      if (v === "on" || v === "off") {
-        cfg.troll = v === "on";
-        save();
-      }
-      return `🤡 Troll replies: ${cfg.troll ? "ON" : "OFF"}`;
-    },
-  },
-};
-
-Object.assign(COMMANDS, economy.commands); // coins, bank, shop
-Object.assign(COMMANDS, moderation.commands); // kick, ban, warn...
-
-function resolve(name) {
-  let cmd = COMMANDS[name];
-  if (cmd && cmd.alias) cmd = COMMANDS[cmd.alias];
-  return cmd || null;
-}
-
-/** Parse "!music foo" -> { name: "music", args: "foo" } (null if not a command) */
-function parse(body, prefix) {
-  const text = String(body || "").trim();
-  if (!text.startsWith(prefix)) return null;
-  const m = /^(\S+)(?:\s+([\s\S]*))?$/.exec(text.slice(prefix.length));
-  if (!m) return null;
-  return { name: m[1].toLowerCase(), args: (m[2] || "").trim() };
-}
-
-/** Background loop that fires saved reminders (survives restarts via config). */
-function startReminderLoop({ cfg, save, send, ready }) {
-  setInterval(() => {
-    if (typeof ready === "function" && !ready()) return; // offline: keep them, fire after reconnect
-    if (!Array.isArray(cfg.reminders) || !cfg.reminders.length) return;
-    const now = Date.now();
-    const due = cfg.reminders.filter((r) => r.at <= now);
-    if (!due.length) return;
-    cfg.reminders = cfg.reminders.filter((r) => r.at > now);
-    save();
-    for (const r of due) Promise.resolve(send(r.threadID, `⏰ Paalala: ${r.text}`)).catch(() => {});
-  }, 5000);
-}
-
-module.exports = { COMMANDS, resolve, parse, startReminderLoop, calc };
+    }
