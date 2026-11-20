@@ -558,4 +558,209 @@ app.use("/api", (req, res, next) => {
   if (hasAdmin() && given !== undefined && checkPw(given)) { fails.delete(ip); return next(); }
   if (given !== undefined) { f.push(now); fails.set(ip, f); }
   if (fails.size > 500) for (const [k, v] of fails) if (!v.some((t) => now - t < 900e3)) fails.delete(k);
-  res.status(401).json({ error
+  res.status(401).json({ error: "unauthorized" });
+});
+
+const status = () => ({
+  online: S.online, running: S.running, uid: S.uid, authDead: S.authDead, fca: S.fcaName,
+  serverUptime: (Date.now() - S.started) / 1000 | 0, botUptime: S.running && S.botSince ? (Date.now() - S.botSince) / 1000 | 0 : 0,
+  lastConnected: S.lastConnected, lastDisconnected: S.lastDisconnected, lastPing: S.lastPing, lastEventAt: S.lastEventAt,
+  stateRefreshedAt: cfg.stateRefreshedAt, savedAt: cfg.savedAt,
+  autoReply: cfg.autoReply, threads: cfg.threads, repliesHour: S.replies.length, repliesDay: S.daily.length, suppressed: S.suppressed,
+  attempts: S.attempts, nextRetry: S.nextRetry, lastError: S.lastError, cookieSaved: !!cfg.appState,
+  prefix: cfg.prefix, gc: gc.status(), admins: (cfg.admins || []).map(String),
+  settings: {
+    speed: cfg.speed, selfReact: cfg.selfReact, selfReactRate: cfg.selfReactRate, markRead: cfg.markRead, troll: cfg.troll,
+    skipMax: cfg.skipMax, hourlyMax: cfg.hourlyMax, dailyMax: cfg.dailyMax, quiet: cfg.quiet, tz: cfg.tz,
+  },
+  quietNow: inQuiet(), log: S.log.slice(0, 40),
+  // ===== Phobia: status ng spam at locks para sa dashboard =====
+  spam: spamMode.getStatus(),
+});
+app.get("/api/status", (q, r) => r.json(status()));
+app.post("/api/auto", (q, r) => { cfg.autoReply = !!q.body.on; save(); r.json(status()); });
+app.post("/api/threadset", (q, r) => {
+  const id = String((q.body && q.body.threadId) || "").trim();
+  if (!/^\d{5,25}$/.test(id)) return r.status(400).json({ error: "Invalid GC id" });
+  const has = cfg.threads.includes(id);
+  if (q.body.on && !has) cfg.threads.push(id);
+  if (!q.body.on && has) { cfg.threads = cfg.threads.filter((t) => t !== id); gc.stop(id); }
+  save(); r.json(status());
+});
+app.post("/api/start", async (q, r) => { await startBot(); r.json(status()); });
+app.post("/api/stop", (q, r) => { S.running = false; cfg.running = false; save(); log("bot", "stopped"); r.json(status()); });
+app.post("/api/reconnect", (q, r) => {
+  S.manualOff = false; S.authDead = false; if (S.online) { teardown(); }
+  S.attempts = 0; clearTimeout(S.timer); connect(); r.json(status());
+});
+app.post("/api/disconnect", (q, r) => { disconnect(); r.json(status()); });
+app.post("/api/session", (q, r) => {
+  try {
+    cfg.appState = parseCookie(q.body.cookie); cfg.savedAt = Date.now(); cfg.stateRefreshedAt = null; S.lastStateJson = JSON.stringify(cfg.appState); save();
+    S.manualOff = false; S.authDead = false; S.attempts = 0; S.lastError = null;
+    if (S.online) teardown();
+    connect(); r.json(status());
+  } catch (e) { r.status(400).json({ error: "Invalid cookie (need a JSON array or c_user=...; xs=...)" }); }
+});
+app.post("/api/settings", (q, r) => {
+  const b = q.body || {};
+  if (["fast", "normal", "slow"].includes(b.speed)) cfg.speed = b.speed;
+  if (typeof b.selfReact === "boolean") cfg.selfReact = b.selfReact;
+  if (typeof b.markRead === "boolean") cfg.markRead = b.markRead;
+  if (typeof b.troll === "boolean") cfg.troll = b.troll;
+  cfg.selfReactRate = num(b.selfReactRate, 0, 1, cfg.selfReactRate);
+  cfg.skipMax = Math.round(num(b.skipMax, 0, 4, cfg.skipMax));
+  cfg.hourlyMax = Math.round(num(b.hourlyMax, 0, 1e6, cfg.hourlyMax));
+  cfg.dailyMax = Math.round(num(b.dailyMax, 0, 1e7, cfg.dailyMax));
+  if (b.quiet && typeof b.quiet === "object") {
+    const ok = (s) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(s));
+    cfg.quiet = { on: !!b.quiet.on, start: ok(b.quiet.start) ? b.quiet.start : cfg.quiet.start, end: ok(b.quiet.end) ? b.quiet.end : cfg.quiet.end };
+  }
+  save(); log("system", "settings updated"); r.json(status());
+});
+
+// GC name cycle (also controllable from chat with !gcname)
+app.post("/api/gcsave", (q, r) => {
+  const b = q.body || {};
+  if (Array.isArray(b.names)) gc.setNames(b.names, false);
+  if (b.intervalS != null) gc.setInterval(b.intervalS, false);
+  save(); r.json(status());
+});
+app.post("/api/gcstart", (q, r) => {
+  const b = q.body || {};
+  const ids = [...new Set([...(Array.isArray(b.threadIds) ? b.threadIds : []), ...(b.threadId ? [b.threadId] : [])].map(String))];
+  const use = ids.length ? ids : cfg.threads.length ? cfg.threads : gc.status().threads;
+  if (!use.length) return r.status(400).json({ error: "I-ON muna ang bot sa kahit isang GC (Group chat card)." });
+  gc.start({ threadIds: use, names: Array.isArray(b.names) ? b.names : undefined, intervalS: b.intervalS });
+  r.json(status());
+});
+app.post("/api/gcstop", (q, r) => { gc.stop(q.body && q.body.threadId ? q.body.threadId : undefined); r.json(status()); });
+
+// Admin IDs
+app.post("/api/admins", (q, r) => {
+  const raw = (q.body && q.body.ids) || [];
+  const list = Array.isArray(raw) ? raw : String(raw).split(/[\s,;]+/);
+  const ids = [...new Set(list.map((x) => String(x).trim()).filter((x) => /^\d{5,25}$/.test(x)))].slice(0, 50);
+  cfg.admins = ids; save(); log("system", `admins updated (${ids.length})`);
+  r.json(status());
+});
+
+// Group features: Lock GC name + Set ALL nicknames (dashboard routes; protected by the /api password check above)
+require("./group-routes")(app, () => S.api, () => S.uid);
+
+// ============================================================
+// Phobia: Title Lock routes
+// ============================================================
+app.get("/api/titlelock", async (_req, res) => {
+  try {
+    const groups = await lockStore.listProtectedGroups();
+    res.json({ groups });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post("/api/titlelock", async (req, res) => {
+  try {
+    const { threadID, title, enabled } = req.body || {};
+    if (!threadID || !title) return res.status(400).json({ error: "threadID and title required" });
+    lockStore.setGroupTitleLock(threadID, title, enabled !== false);
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete("/api/titlelock/:threadID", (req, res) => {
+  lockStore.removeGroupTitleLock(req.params.threadID);
+  res.json({ ok: true });
+});
+
+// ============================================================
+// Phobia: Nickname Lock routes
+// ============================================================
+app.get("/api/nicklocks", async (_req, res) => {
+  try {
+    const locks = await lockStore.listNicknameLocks();
+    res.json({ locks });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post("/api/nicklocks", (req, res) => {
+  try {
+    const { threadID, userID, nickname } = req.body || {};
+    if (!threadID || !userID || !nickname) return res.status(400).json({ error: "threadID, userID, nickname required" });
+    lockStore.saveNicknameLock(threadID, userID, nickname);
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete("/api/nicklocks/:threadID/:userID", async (req, res) => {
+  try {
+    await lockStore.deleteNicknameLock(req.params.threadID, req.params.userID);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ============================================================
+// Phobia: Mass set nickname route
+// ============================================================
+app.post("/api/mass-setnn", async (req, res) => {
+  try {
+    if (!S.api) return res.status(503).json({ error: "Bot not connected" });
+    const result = await executeMassSetNickname({
+      api: S.api,
+      threadID: req.body.threadID,
+      nickname: req.body.nickname,
+      userIDs: req.body.userIDs,
+      getMembers: (tid) => new Promise((ok, fail) =>
+        S.api.getThreadInfo(tid, (e, d) => (e ? fail(e) : ok(d)))
+      ).then(info => (info.participantIDs || []).map(id => ({ userID: id }))),
+      saveNickname: (tid, uid, nick) => lockStore.saveNicknameLock(tid, uid, nick),
+      delayMs: 1500,
+    });
+    res.json(result);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ============================================================
+// Phobia: Spam mode routes
+// ============================================================
+app.post("/api/spam/start", (req, res) => {
+  try {
+    if (!S.api) return res.status(503).json({ error: "Bot not connected" });
+    res.json(spamMode.start(req.body));
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post("/api/spam/stop", (req, res) => {
+  try {
+    const result = req.body?.all
+      ? spamMode.stopAll("dashboard")
+      : spamMode.stop(req.body?.threadID);
+    res.json(result || { ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get("/api/spam/status", (_req, res) => {
+  res.json(spamMode.getStatus());
+});
+
+// ============================================================
+// Phobia: React helper route
+// ============================================================
+app.post("/api/react", (req, res) => {
+  try {
+    if (!S.api) return res.status(503).json({ error: "Bot not connected" });
+    const { messageID, threadID, emoji } = req.body || {};
+    const id = extractMessageID(messageID);
+    if (!id || !threadID) return res.status(400).json({ error: "messageID and threadID required" });
+    dispatchMessageReaction(S.api, emoji || "❤", id, threadID, {
+      onStatus: (state, meta) => console.log("[REACT]", state, meta?.method || ""),
+    });
+    res.json({ ok: true, messageID: id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get("/api/threads", (q, r) => {
+  if (!S.api) return r.json([]);
+  S.api.getThreadList(50, null, ["INBOX"], (e, l) => r.json(e ? [] : l.filter((t) => t.isGroup).map((t) => ({ id: t.threadID, name: t.name || t.threadID }))));
+});
+
+// A long-running process must not die on one stray exception, and must save the
+// freshest cookie when the host (Railway) sends SIGTERM on redeploy.
+process.on("uncaughtException", (e) => log("fatal", (e && e.stack) || e));
+process.on("unhandledRejection", (e) => log("fatal", (e && e.stack) || e));
+for (const sig of ["SIGTERM", "SIGINT"]) process.on(sig, () => { economy.flush(); moderation.flush(); stopAllTyping(); captureState("shutdown"); save(); process.exit(0); });
+
+app.listen(PORT, () => { log("system", "server on " + PORT); if (cfg.appState) connect(); });
