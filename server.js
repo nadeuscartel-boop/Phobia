@@ -1,5 +1,5 @@
 "use strict";
-// Celestial Troll Bot — troll auto-reply + assistant commands + GC name cycle.
+// Celestial Troll Bot — troll auto-reply + assistant commands + GC name cycle + PM Banat + Image Lock.
 // Built to stay logged in and never die: errors back off and retry, they never end the process.
 
 const express = require("express");
@@ -14,27 +14,28 @@ const { createGcCycle } = require("./gcname");
 const commands = require("./commands");
 const economy = require("./economy");
 const moderation = require("./moderation");
-const groupControls = require("./group-controls");   // Lock GC name + Set ALL nicknames (dashboard only)
+const groupControls = require("./group-controls");
 
 // ============================================================
-// Phobia integration modules
+// Phobia Integration Modules
 // ============================================================
 const { createLockStore } = require("./lock-store");
 const { createGroupTitleGuard } = require("./group-title-guard");
 const { createNicknameLockGuard } = require("./nickname-lock-guard");
+const { createGroupImageGuard } = require("./group-image-guard"); // BAGO
 const { executeMassSetNickname } = require("./mass-setnn");
 const { isDuplicateMessage } = require("./message-dedupe");
 const { extractMessageID, dispatchMessageReaction } = require("./message-reactions");
 const { createSpamMode } = require("./spam-mode");
 
 const PORT = process.env.PORT || 3000;
-const DATA = process.env.DATA_DIR || __dirname; // everything lives in the project root by default
+const DATA = process.env.DATA_DIR || __dirname;
 fs.mkdirSync(DATA, { recursive: true });
 economy.init(DATA, (who, msg) => console.log(`[${who}] ${msg}`));
 
 // ---------- tiny helpers ----------
 function safeRead(f) { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return {}; } }
-function writeAtomic(f, obj) {                       // never leave a half-written cookie file behind
+function writeAtomic(f, obj) {
   const tmp = f + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), { mode: 0o600 });
   fs.renameSync(tmp, f);
@@ -43,7 +44,6 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const num = (v, min, max, fallback) => { const n = Number(v); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback; };
 
 // ---------- dashboard access ----------
-// Walang password by default. Kung gusto mong i-lock, mag-set lang ng ADMIN_PASSWORD sa Railway Variables.
 const hasAdmin = () => !!process.env.ADMIN_PASSWORD;
 function safeEq(a, b) {
   const x = crypto.createHash("sha256").update(String(a)).digest();
@@ -56,42 +56,37 @@ const checkPw = (pw) => hasAdmin() && safeEq(pw || "", process.env.ADMIN_PASSWOR
 const CFG_FILE = path.join(DATA, "config.json");
 const DEFAULTS = {
   appState: null, savedAt: null, stateRefreshedAt: null,
-  autoReply: false, threadId: null, threads: [], running: false,   // threads = every GC the bot is turned ON in
+  autoReply: false, threadId: null, threads: [], running: false,
   speed: "fast", selfReact: true, selfReactRate: 0.15, markRead: true,
-  skipMax: 4, senderCooldownS: 0, hourlyMax: 0, dailyMax: 0, threadMax: 0, threadWindowS: 300,   // 0 = walang limit   // skipMax: most messages in a row that may be skipped (0 = reply to everything)
-  awayBreaks: false,           // random 20-90 min "away" pauses (off: replies never go quiet by themselves)
+  skipMax: 4, senderCooldownS: 0, hourlyMax: 0, dailyMax: 0, threadMax: 0, threadWindowS: 300,
+  awayBreaks: false,
   quiet: { on: false, start: "00:30", end: "07:30" }, tz: process.env.BOT_TZ || "Asia/Manila",
   openers: ["hello", "uy"],
   profile: "unlimited-v1",
-  // assistant / commands
-  troll: true,                 // random troll replies on/off (commands work either way)
+  troll: true,
+  pmTroll: true, // BAGO: Private Message Banat ON/OFF
   prefix: "!",
-  admins: [],                  // extra admin user IDs (the bot account itself is always admin)
+  admins: [],
   cmdCooldownS: 2, cmdHourlyMax: 0,
-  fcaPackage: null,            // name of the fca library to load (or env FCA_PACKAGE)
+  fcaPackage: null,
   reminders: [],
 };
-// Low-footprint profile for long runs. Applied ONCE to an older saved config.json
-// (so the Railway volume gets updated too); after that, dashboard changes are respected.
 const STEALTH_V1 = ["speed", "selfReact", "selfReactRate", "skipMax", "senderCooldownS", "hourlyMax", "dailyMax", "threadMax", "threadWindowS", "openers"];
 const cfg = Object.assign({}, DEFAULTS, safeRead(CFG_FILE));
 cfg.quiet = Object.assign({}, DEFAULTS.quiet, cfg.quiet);
 if (cfg.profile !== DEFAULTS.profile) {
   for (const k of STEALTH_V1) cfg[k] = DEFAULTS[k];
-  cfg.quiet = Object.assign({}, DEFAULTS.quiet); cfg.profile = DEFAULTS.profile;   // quiet hours OFF: replies run non-stop
+  cfg.quiet = Object.assign({}, DEFAULTS.quiet); cfg.profile = DEFAULTS.profile;
   try { writeAtomic(CFG_FILE, cfg); } catch {}
 }
-// Multi-GC: the bot only chats in the GCs listed in cfg.threads (turned ON with !on or the dashboard).
 cfg.threads = (Array.isArray(cfg.threads) ? cfg.threads : []).map(String);
-if (cfg.threadId && !cfg.threads.includes(String(cfg.threadId))) cfg.threads.push(String(cfg.threadId));   // old single-GC config
+if (cfg.threadId && !cfg.threads.includes(String(cfg.threadId))) cfg.threads.push(String(cfg.threadId));
 cfg.threadId = null;
 const save = () => { try { writeAtomic(CFG_FILE, cfg); } catch (e) { console.error("[save]", e.message); } };
 
 const envAdmins = new Set(String(process.env.ADMIN_IDS || "").split(",").map((s) => s.trim()).filter(Boolean));
 const isAdminId = (id) => String(id) === S.uid || envAdmins.has(String(id)) || (cfg.admins || []).map(String).includes(String(id));
 
-// Owner = the bot account + OWNER_IDS (env, comma-separated) + cfg.owners.
-// If no extra owner is set at all, the admins count as owners (so !setbal works out of the box).
 const envOwners = new Set(String(process.env.OWNER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean));
 const isOwnerId = (id) => {
   const cfgOwners = (cfg.owners || []).map(String);
@@ -100,7 +95,7 @@ const isOwnerId = (id) => {
 };
 moderation.init(DATA, (who, msg) => console.log(`[${who}] ${msg}`), { isAdminId, isOwnerId });
 
-// ---------- reply pools (replies.json: array OR { type: [..], default: [..] }) ----------
+// ---------- reply pools ----------
 const RAW_POOL = JSON.parse(fs.readFileSync(path.join(__dirname, "replies.json"), "utf8"));
 const POOLS = Array.isArray(RAW_POOL) ? { default: RAW_POOL } : RAW_POOL;
 const ALL_REPLIES = [...new Set(Object.values(POOLS).flat())];
@@ -115,7 +110,7 @@ const S = {
   lastEventAt: null, lastPing: null, nextPing: 0, lastStateJson: cfg.appState ? JSON.stringify(cfg.appState) : null,
   lastError: null, replies: [], daily: [], suppressed: 0, awayUntil: 0, fcaName: null,
   senders: new Map(), threads: new Map(), busy: new Set(), log: [], skipRun: new Map(),
-  cmdSenders: new Map(), cmdHour: [],
+  cmdSenders: new Map(), cmdHour: [], pmCooldown: new Map(),
 };
 
 function log(who, msg) {
@@ -125,37 +120,23 @@ function log(who, msg) {
 }
 
 // ============================================================
-// Phobia: lock store + guards + spam instance
+// Phobia: lock store + guards + spam
 // ============================================================
 const lockStore = createLockStore({ dataDir: DATA });
-
-let titleGuard = null;
-let nicknameGuard = null;
+let titleGuard = null, nicknameGuard = null, imageGuard = null;
 
 function initGuards() {
-  if (!titleGuard) {
-    titleGuard = createGroupTitleGuard({ store: lockStore, getApi: () => S.api });
-    titleGuard.start();
-  }
-  if (!nicknameGuard) {
-    nicknameGuard = createNicknameLockGuard({ store: lockStore, getApi: () => S.api });
-    nicknameGuard.start();
-  }
+  if (!titleGuard) { titleGuard = createGroupTitleGuard({ store: lockStore, getApi: () => S.api }); titleGuard.start(); }
+  if (!nicknameGuard) { nicknameGuard = createNicknameLockGuard({ store: lockStore, getApi: () => S.api }); nicknameGuard.start(); }
+  if (!imageGuard) { imageGuard = createGroupImageGuard({ store: lockStore, getApi: () => S.api }); imageGuard.start(); }
 }
 
-// Shared spam instance — dashboard routes at chat commands pareho ito
 const spamMode = createSpamMode({
   getApi: () => S.api,
-  sendMessage: (api, msg, tid) => new Promise((ok, fail) =>
-    api.sendMessage(msg, tid, (e) => (e ? fail(e) : ok()))
-  ),
+  sendMessage: (api, msg, tid) => new Promise((ok, fail) => api.sendMessage(msg, tid, (e) => (e ? fail(e) : ok()))),
   isAuthorized: () => !!S.api,
 });
-
-// Expose spam instance sa commands.js para magamit ng !spam
-if (typeof commands.setSpamModeInstance === "function") {
-  commands.setSpamModeInstance(spamMode);
-}
+if (typeof commands.setSpamModeInstance === "function") commands.setSpamModeInstance(spamMode);
 
 // ---------- session ----------
 function parseCookie(raw) {
@@ -171,7 +152,6 @@ function parseCookie(raw) {
   return arr;
 }
 
-// First boot with no saved cookie: accept APPSTATE env or an appstate.json next to server.js.
 if (!cfg.appState) {
   try {
     const raw = process.env.APPSTATE || (fs.existsSync(path.join(DATA, "appstate.json")) ? fs.readFileSync(path.join(DATA, "appstate.json"), "utf8") : "");
@@ -278,10 +258,11 @@ function connect() {
     captureState("login");
     if (cfg.running && !S.running) { S.running = true; S.botSince = Date.now(); log("bot", "resumed after reconnect"); }
 
-    // ===== Phobia: start guards + reconcile after login =====
+    // Start guards
     initGuards();
     if (titleGuard) titleGuard.reconcile().catch(() => {});
     if (nicknameGuard) nicknameGuard.reconcile("reconnect").catch(() => {});
+    if (imageGuard) imageGuard.reconcile().catch(() => {});
 
     startListen();
     gc.resume();
@@ -295,13 +276,14 @@ function startListen() {
     if (e) return onListenError(e);
     S.listenFails = 0; S.lastEventAt = Date.now();
 
-    // ===== Phobia: dedupe (reconnect/replay guard) =====
+    // Dedupe
     if (ev && ev.messageID && isDuplicateMessage(ev.messageID)) return;
 
-    // ===== Phobia: title + nickname guards =====
+    // Guards
     if (ev && ev.threadID) {
       try { titleGuard?.handleEvent(ev).catch(() => {}); } catch {}
       try { nicknameGuard?.handleEvent(ev).catch(() => {}); } catch {}
+      try { imageGuard?.handleEvent(ev).catch(() => {}); } catch {}
     }
 
     onEvent(ev).catch((err) => log("error", "event: " + (err && err.message || err)));
@@ -375,7 +357,6 @@ if (process.env.SELF_URL) {
 
 // ---------- sending ----------
 const sendRaw = (api, text, tid, cb, replyTo) => api.sendMessage(text, tid, cb, replyTo || undefined);
-
 function sendAssistant(threadID, message, replyTo = null, incomingText = "") {
   if (!S.api) return Promise.resolve(false);
   return sendBanatReplyWithTyping(S.api, message, threadID, replyTo, {
@@ -385,10 +366,9 @@ function sendAssistant(threadID, message, replyTo = null, incomingText = "") {
 
 // ---------- GC name cycle ----------
 const gc = createGcCycle({ getApi: () => S.api, cfg, save, log, isAuthError, onAuthError: markAuthDead });
-
 commands.startReminderLoop({ cfg, save, ready: () => !!S.api, send: (tid, text) => sendAssistant(tid, text) });
 
-// ---------- Bot ----------
+// ---------- Bot gates ----------
 function allowed(ev) {
   const now = Date.now();
   S.replies = S.replies.filter((t) => now - t < 3600e3);
@@ -401,7 +381,6 @@ function allowed(ev) {
   if (S.threads.size > 500) for (const [k, v] of S.threads) if (!v.length) S.threads.delete(k);
   return !(cfg.threadMax > 0) || th.length < cfg.threadMax;
 }
-
 const isTarget = (ev) => cfg.autoReply || cfg.threads.includes(String(ev.threadID));
 
 async function handleCommand(ev, parsed) {
@@ -433,19 +412,8 @@ async function handleCommand(ev, parsed) {
   let reply;
   try {
     reply = await cmd.run({
-      args: parsed.args,
-      ev,
-      cfg,
-      save,
-      gc,
-      S,
-      prefix: cfg.prefix,
-      isAdmin: admin,
-      isOwner: owner,
-      // ===== Phobia: extra ctx para sa lock / spam / react / massnn commands =====
-      api,
-      lockStore,
-      spamMode,
+      args: parsed.args, ev, cfg, save, gc, S, prefix: cfg.prefix, isAdmin: admin, isOwner: owner,
+      api, lockStore, spamMode, imageGuard, // <-- Passed to commands
     });
   } catch (e) {
     log("error", `cmd ${parsed.name}: ${e && e.message || e}`);
@@ -476,9 +444,47 @@ async function onEvent(ev) {
   if (own && !isCmd) return;
   if (isCmd) return handleCommand(ev, parsed);
 
+  // ============================================================
+  // PRIVATE MESSAGE (PM) BANAT
+  // Kung threadID === senderID, ibig sabihin PM ito.
+  // ============================================================
+  if (ev.threadID === ev.senderID && ev.senderID !== S.uid) {
+    if (!cfg.pmTroll || !S.running) return;
+    
+    const now = Date.now();
+    const lastPM = S.pmCooldown.get(ev.senderID) || 0;
+    if (now - lastPM < 5000) return; // 5s cooldown per sender
+    S.pmCooldown.set(ev.senderID, now);
+    if (S.pmCooldown.size > 1000) for (const [k, t] of S.pmCooldown) if (now - t > 3600e3) S.pmCooldown.delete(k);
+
+    if (Math.random() < 0.3) return; // 30% chance to skip, para parang tao
+    if (S.busy.has(ev.threadID)) return;
+
+    S.busy.add(ev.threadID);
+    try {
+      const social = chooseSocialResponse(ev.body, "", { momentum: 1, recentMessages: 1 });
+      const r = pickBanatReply(ev.threadID, poolFor(social.type), [], "pm-pool:" + poolKey(social.type));
+      const text = typeof r === "string" && r ? r : ALL_REPLIES[Math.floor(Math.random() * ALL_REPLIES.length)];
+      const ok = await sendBanatReplyWithTyping(S.api, text, ev.threadID, null, {
+        trafficSendMessage: sendRaw,
+        incomingText: ev.body,
+        speed: cfg.speed,
+        selfReact: false,
+      });
+      if (ok) log("bot", `PM reply -> ${ev.senderID}`);
+    } finally {
+      S.busy.delete(ev.threadID);
+    }
+    return;
+  }
+
+  // ============================================================
+  // GROUP CHAT BANAT
+  // ============================================================
   if (!S.running || !cfg.troll) return;
   if (!isTarget(ev) || inQuiet()) return;
   if (Date.now() < S.awayUntil) return;
+
   const run = S.skipRun.get(ev.threadID) || 0;
   if (run < Math.min(4, Math.max(0, Number(cfg.skipMax) || 0)) && Math.random() < 0.5) { S.skipRun.set(ev.threadID, run + 1); return; }
   if (S.busy.has(ev.threadID)) return;
@@ -571,10 +577,10 @@ const status = () => ({
   prefix: cfg.prefix, gc: gc.status(), admins: (cfg.admins || []).map(String),
   settings: {
     speed: cfg.speed, selfReact: cfg.selfReact, selfReactRate: cfg.selfReactRate, markRead: cfg.markRead, troll: cfg.troll,
+    pmTroll: cfg.pmTroll, // <-- PM Toggle status
     skipMax: cfg.skipMax, hourlyMax: cfg.hourlyMax, dailyMax: cfg.dailyMax, quiet: cfg.quiet, tz: cfg.tz,
   },
   quietNow: inQuiet(), log: S.log.slice(0, 40),
-  // ===== Phobia: status ng spam at locks para sa dashboard =====
   spam: spamMode.getStatus(),
 });
 app.get("/api/status", (q, r) => r.json(status()));
@@ -608,6 +614,7 @@ app.post("/api/settings", (q, r) => {
   if (typeof b.selfReact === "boolean") cfg.selfReact = b.selfReact;
   if (typeof b.markRead === "boolean") cfg.markRead = b.markRead;
   if (typeof b.troll === "boolean") cfg.troll = b.troll;
+  if (typeof b.pmTroll === "boolean") cfg.pmTroll = b.pmTroll; // <-- PM Toggle
   cfg.selfReactRate = num(b.selfReactRate, 0, 1, cfg.selfReactRate);
   cfg.skipMax = Math.round(num(b.skipMax, 0, 4, cfg.skipMax));
   cfg.hourlyMax = Math.round(num(b.hourlyMax, 0, 1e6, cfg.hourlyMax));
@@ -619,7 +626,7 @@ app.post("/api/settings", (q, r) => {
   save(); log("system", "settings updated"); r.json(status());
 });
 
-// GC name cycle (also controllable from chat with !gcname)
+// GC name cycle
 app.post("/api/gcsave", (q, r) => {
   const b = q.body || {};
   if (Array.isArray(b.names)) gc.setNames(b.names, false);
@@ -645,17 +652,15 @@ app.post("/api/admins", (q, r) => {
   r.json(status());
 });
 
-// Group features: Lock GC name + Set ALL nicknames (dashboard routes; protected by the /api password check above)
+// Group features
 require("./group-routes")(app, () => S.api, () => S.uid);
 
 // ============================================================
-// Phobia: Title Lock routes
+// Phobia Lock Routes (Title, Nickname, Image)
 // ============================================================
 app.get("/api/titlelock", async (_req, res) => {
-  try {
-    const groups = await lockStore.listProtectedGroups();
-    res.json({ groups });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json({ groups: await lockStore.listProtectedGroups() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post("/api/titlelock", async (req, res) => {
   try {
@@ -670,14 +675,9 @@ app.delete("/api/titlelock/:threadID", (req, res) => {
   res.json({ ok: true });
 });
 
-// ============================================================
-// Phobia: Nickname Lock routes
-// ============================================================
 app.get("/api/nicklocks", async (_req, res) => {
-  try {
-    const locks = await lockStore.listNicknameLocks();
-    res.json({ locks });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json({ locks: await lockStore.listNicknameLocks() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post("/api/nicklocks", (req, res) => {
   try {
@@ -688,15 +688,28 @@ app.post("/api/nicklocks", (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.delete("/api/nicklocks/:threadID/:userID", async (req, res) => {
-  try {
-    await lockStore.deleteNicknameLock(req.params.threadID, req.params.userID);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  try { await lockStore.deleteNicknameLock(req.params.threadID, req.params.userID); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================================
-// Phobia: Mass set nickname route
-// ============================================================
+app.get("/api/imagelock", async (_req, res) => {
+  try { res.json({ groups: await lockStore.listProtectedImages() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post("/api/imagelock", async (req, res) => {
+  try {
+    const { threadID, imageUrl, enabled } = req.body || {};
+    if (!threadID || !imageUrl) return res.status(400).json({ error: "threadID and imageUrl required" });
+    lockStore.setGroupImageLock(threadID, imageUrl, enabled !== false);
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete("/api/imagelock/:threadID", (req, res) => {
+  lockStore.removeGroupImageLock(req.params.threadID);
+  res.json({ ok: true });
+});
+
+// Mass set nickname
 app.post("/api/mass-setnn", async (req, res) => {
   try {
     if (!S.api) return res.status(503).json({ error: "Bot not connected" });
@@ -705,9 +718,7 @@ app.post("/api/mass-setnn", async (req, res) => {
       threadID: req.body.threadID,
       nickname: req.body.nickname,
       userIDs: req.body.userIDs,
-      getMembers: (tid) => new Promise((ok, fail) =>
-        S.api.getThreadInfo(tid, (e, d) => (e ? fail(e) : ok(d)))
-      ).then(info => (info.participantIDs || []).map(id => ({ userID: id }))),
+      getMembers: (tid) => new Promise((ok, fail) => S.api.getThreadInfo(tid, (e, d) => (e ? fail(e) : ok(d)))).then(info => (info.participantIDs || []).map(id => ({ userID: id }))),
       saveNickname: (tid, uid, nick) => lockStore.saveNicknameLock(tid, uid, nick),
       delayMs: 1500,
     });
@@ -715,9 +726,7 @@ app.post("/api/mass-setnn", async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// ============================================================
-// Phobia: Spam mode routes
-// ============================================================
+// Spam routes
 app.post("/api/spam/start", (req, res) => {
   try {
     if (!S.api) return res.status(503).json({ error: "Bot not connected" });
@@ -726,19 +735,13 @@ app.post("/api/spam/start", (req, res) => {
 });
 app.post("/api/spam/stop", (req, res) => {
   try {
-    const result = req.body?.all
-      ? spamMode.stopAll("dashboard")
-      : spamMode.stop(req.body?.threadID);
+    const result = req.body?.all ? spamMode.stopAll("dashboard") : spamMode.stop(req.body?.threadID);
     res.json(result || { ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.get("/api/spam/status", (_req, res) => {
-  res.json(spamMode.getStatus());
-});
+app.get("/api/spam/status", (_req, res) => res.json(spamMode.getStatus()));
 
-// ============================================================
-// Phobia: React helper route
-// ============================================================
+// React route
 app.post("/api/react", (req, res) => {
   try {
     if (!S.api) return res.status(503).json({ error: "Bot not connected" });
@@ -757,8 +760,7 @@ app.get("/api/threads", (q, r) => {
   S.api.getThreadList(50, null, ["INBOX"], (e, l) => r.json(e ? [] : l.filter((t) => t.isGroup).map((t) => ({ id: t.threadID, name: t.name || t.threadID }))));
 });
 
-// A long-running process must not die on one stray exception, and must save the
-// freshest cookie when the host (Railway) sends SIGTERM on redeploy.
+// Global Error Handlers
 process.on("uncaughtException", (e) => log("fatal", (e && e.stack) || e));
 process.on("unhandledRejection", (e) => log("fatal", (e && e.stack) || e));
 for (const sig of ["SIGTERM", "SIGINT"]) process.on(sig, () => { economy.flush(); moderation.flush(); stopAllTyping(); captureState("shutdown"); save(); process.exit(0); });
