@@ -182,7 +182,6 @@ details.more summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:
 .hw:nth-of-type(3){animation-duration:15s;animation-delay:-6s}
 @keyframes floaty{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-26px) rotate(6deg)}}
 
-/* pre for JSON outputs (spam / massnn / etc) */
 pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:rgba(11,6,16,.55);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;color:var(--text)}
 </style>
 </head>
@@ -294,7 +293,7 @@ pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:
   </div>
 </section>
 
-<!-- LOCKS (Phobia: title lock, nickname lock, mass set nickname) -->
+<!-- LOCKS (Title, Nickname, Image, Mass Setnn) -->
 <section id="tab-locks" role="tabpanel" hidden>
   <div class="c">
     <h2>🔒 Group Title Lock</h2>
@@ -306,6 +305,18 @@ pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:
       <button class="ghost" onclick="tlLoad()">Refresh list</button>
     </div>
     <div id="tl-list" class="m" style="margin-top:12px">Loading…</div>
+  </div>
+
+  <div class="c">
+    <h2>🖼️ Group Image Lock</h2>
+    <div class="m">I-lock ang larawan ng GC. Kapag may nagpalit, ibabalik sa tamang image URL sa loob ng <b>~120s</b>. Chat command: <b>!imagelock on &lt;url&gt;</b> / <b>!imagelock off</b>.</div>
+    <label>Thread ID ng GC<input id="il-thread" type="text" placeholder="hal. 1234567890"></label>
+    <label>Image URL<input id="il-url" type="text" placeholder="https://..."></label>
+    <div class="g">
+      <button class="acc" onclick="ilSave()">Save lock</button>
+      <button class="ghost" onclick="ilLoad()">Refresh list</button>
+    </div>
+    <div id="il-list" class="m" style="margin-top:12px">Loading…</div>
   </div>
 
   <div class="c">
@@ -334,7 +345,7 @@ pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:
   </div>
 </section>
 
-<!-- SPAM (Phobia) -->
+<!-- SPAM -->
 <section id="tab-spam" role="tabpanel" hidden>
   <div class="c">
     <h2>📣 Spam Mode</h2>
@@ -354,7 +365,7 @@ pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:
   </div>
 </section>
 
-<!-- REACT (Phobia) -->
+<!-- REACT -->
 <section id="tab-react" role="tabpanel" hidden>
   <div class="c">
     <h2>❤️ React sa message</h2>
@@ -383,9 +394,14 @@ pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:
     <label>Self react chance (0-1)<input id="s_selfrate" type="number" step="0.05" min="0" max="1"></label></div>
     <label>Max skip na sunod-sunod (0-4). 0 = sasagot sa lahat<input id="s_skip" type="number" step="1" min="0" max="4"></label>
     <div class="g"><label>Max replies / oras (0 = walang limit)<input id="s_hour" type="number" min="0" max="1000000"></label><label>Max replies / araw (0 = walang limit)<input id="s_day" type="number" min="0" max="10000000"></label></div>
-    <div class="g"><label>Troll replies (random asar)<select id="s_troll"><option value="1">ON</option><option value="0">OFF</option></select></label>
-    <label>Mark as seen<select id="s_read"><option value="1">ON</option><option value="0">OFF</option></select></label></div>
-    <label>Quiet hours (walang reply)<select id="s_q"><option value="0">OFF</option><option value="1">ON</option></select></label>
+    <div class="g">
+      <label>Troll replies (random asar)<select id="s_troll"><option value="1">ON</option><option value="0">OFF</option></select></label>
+      <label>PM Banat (sagutin ang PM)<select id="s_pm"><option value="1">ON</option><option value="0">OFF</option></select></label>
+    </div>
+    <div class="g">
+      <label>Mark as seen<select id="s_read"><option value="1">ON</option><option value="0">OFF</option></select></label>
+      <label>Quiet hours (walang reply)<select id="s_q"><option value="0">OFF</option><option value="1">ON</option></select></label>
+    </div>
     <div class="g"><label>Start<input id="s_qs" type="time"></label><label>End<input id="s_qe" type="time"></label></div>
     <div class="m" id="tz" style="margin-top:10px"></div>
     <button class="acc" onclick="saveSettings()">Save settings</button>
@@ -393,7 +409,7 @@ pre.out{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:
 
   <div class="c">
     <h2>Mga admin</h2>
-    <div class="m">Mga Facebook ID na puwedeng gumamit ng admin commands (<b>!gcname</b>, <b>!troll</b>, <b>!eco</b>, <b>!titlelock</b>, <b>!nicklock</b>, <b>!massnn</b>, <b>!spam</b>) sa chat. Laging admin ang mismong bot account. Isang ID kada linya, o paghiwalayin ng comma.</div>
+    <div class="m">Mga Facebook ID na puwedeng gumamit ng admin commands (<b>!gcname</b>, <b>!troll</b>, <b>!eco</b>, <b>!titlelock</b>, <b>!nicklock</b>, <b>!massnn</b>, <b>!spam</b>, <b>!imagelock</b>) sa chat. Laging admin ang mismong bot account. Isang ID kada linya, o paghiwalayin ng comma.</div>
     <div class="m" style="margin-top:6px">Para sa owner commands (<b>!setbal</b>, <b>!additem</b>), mag-set ng <b>OWNER_IDS</b> sa Railway Variables.</div>
     <textarea id="admins" rows="3" placeholder="61596019734288"></textarea>
     <div class="m" id="adminst" style="margin-top:8px"></div>
@@ -440,7 +456,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 (async()=>{let n;
  try{n=await (await fetch('/api/needsetup')).json();localStorage.open=n.open?'1':'0'}catch{n={open:localStorage.open==='1'}}
  if(!n.open&&!K&&navigator.onLine)K=localStorage.k=prompt("Dashboard password")||"";
- load();setTimeout(threads,1200);setTimeout(gfUI,1400);setTimeout(gLoad,1600);setTimeout(tlLoad,1800);setTimeout(nlLoad,2000);spPoll()})();
+ load();setTimeout(threads,1200);setTimeout(gfUI,1400);setTimeout(gLoad,1600);setTimeout(tlLoad,1800);setTimeout(nlLoad,2000);setTimeout(ilLoad,2200);spPoll()})();
 
 /* ---------- tabs ---------- */
 const tabs=[...document.querySelectorAll('nav button')];
@@ -471,9 +487,11 @@ const readCache=()=>{try{return JSON.parse(localStorage.lastStatus)}catch{return
 /* ---------- settings ---------- */
 function fill(s){const t=s.settings;$('s_speed').value=t.speed;$('s_self').value=t.selfReact?'1':'0';$('s_selfrate').value=t.selfReactRate;
  $('s_skip').value=t.skipMax;$('s_hour').value=t.hourlyMax;$('s_day').value=t.dailyMax;$('s_read').value=t.markRead?'1':'0';$('s_troll').value=t.troll?'1':'0';
+ $('s_pm').value=t.pmTroll?'1':'0';
  $('s_q').value=t.quiet.on?'1':'0';$('s_qs').value=t.quiet.start.padStart(5,'0');$('s_qe').value=t.quiet.end.padStart(5,'0');$('tz').textContent='Timezone: '+t.tz;filled=true}
 function saveSettings(){post('settings',{speed:$('s_speed').value,selfReact:$('s_self').value=='1',selfReactRate:+$('s_selfrate').value,
  skipMax:+$('s_skip').value,hourlyMax:+$('s_hour').value,dailyMax:+$('s_day').value,markRead:$('s_read').value=='1',troll:$('s_troll').value=='1',
+ pmTroll:$('s_pm').value=='1',
  quiet:{on:$('s_q').value=='1',start:$('s_qs').value,end:$('s_qe').value}})}
 let gcFilled=false,adminsFilled=false;
 const gcNames=()=>$('gc_names').value.split('\n').map(x=>x.trim()).filter(Boolean);
@@ -490,8 +508,8 @@ function renderCmds(p){
    ['Shop',[['shop · item <#>','tingnan'],['buy <#> [dami] · sell <item> · inv','bili, benta, bag']]],
    ['Moderation (admin ng GC)',[['kick @tao','tanggalin'],['ban @tao [dahilan] · unban <#|@tao> · banlist','ban'],['warn @tao · warns · unwarn @tao [all]','3 warns = kick'],['unsend (i-reply) · mods','burahin ang mensahe ng bot']]],
    ['Utility',[['ask <tanong> · weather <lugar> · define <word>',''],['calc <math> · time · timecheck',''],['convert 100 usd php · rate 1000 eur to jpy',''],['remind 10m <text> · roll · flip · 8ball · pick a | b','']]],
-   ['🔒 Admin',[['on · off','buksan/patayin ang bot sa GC'],['gcname start|stop|add|set|interval','GC name cycle'],['troll on|off · eco add|remove|reset @tao','']]],
-   ['🔒 Locks',[['titlelock on <title> · titlelock off · titlelock status','title lock'],['nicklock on @user <nick> · nicklock off @user · nicklock list','nickname lock'],['massnn <nick> @user1 @user2 ...','mass set nickname (max 50)']]],
+   ['🔒 Admin',[['on · off','buksan/patayin ang bot sa GC'],['gcname start|stop|add|set|interval','GC name cycle'],['troll on|off · pm on|off · eco add|remove|reset @tao','']]],
+   ['🔒 Locks',[['titlelock on <title> · titlelock off · titlelock status','title lock'],['imagelock on <url> · imagelock off · imagelock status','image lock'],['nicklock on @user <nick> · nicklock off @user · nicklock list','nickname lock'],['massnn <nick> @user1 @user2 ...','mass set nickname (max 50)']]],
    ['📣 Spam',[['spam start <sec> <loops>','i-reply sa message na gusto mong i-spam'],['spam stop · spam stopall · spam status','']]],
    ['❤️ React',[['react <emoji>','i-reply sa message']]],
    ['🔒 Owner',[['setbal @tao <amt> [wallet|bank]','i-set ang balance'],['additem Pangalan | presyo | emoji | desc | max','dagdag item'],['edititem <#> price|name|emoji|desc|max <value>',''],['delitem <#>','tanggal item (50% refund)']]],
@@ -603,7 +621,7 @@ $('gflist').addEventListener('click',e=>{
 setInterval(()=>{if(S.online)gActive()},5000);
 
 /* ============================================================
-   LOCKS: title lock + nickname lock + mass set nickname
+   LOCKS: title lock + image lock + nickname lock + mass setnn
    ============================================================ */
 async function tlLoad(){
   const r=await api('titlelock');
@@ -617,8 +635,6 @@ async function tlLoad(){
       </div>`).join('')
     :'Wala pang naka-lock na title.';
   box.querySelectorAll('[data-tl]').forEach(b=>b.addEventListener('click',async()=>{
-    const r2=await api('titlelock/'+encodeURIComponent(b.dataset.tl),{_method:'DELETE'});
-    // fallback: POST delete route kasi yung api() POST lang by default
     try{await fetch('/api/titlelock/'+encodeURIComponent(b.dataset.tl),{method:'DELETE',headers:{'x-admin':K}})}catch{}
     toast('Removed ✓');tlLoad();
   }));
@@ -628,6 +644,29 @@ async function tlSave(){
   if(!threadID||!title)return toast('Kailangan ng thread ID at title',true);
   const r=await api('titlelock',{threadID,title,enabled:true});
   if(r&&r.error)toast(r.error,true);else{toast('Saved ✓');$('tl-title').value='';tlLoad()}
+}
+
+async function ilLoad(){
+  const r=await api('imagelock');
+  const box=$('il-list');
+  if(!r||r.error){box.textContent='Error: '+((r&&r.error)||'hindi ma-load');return}
+  const gs=r.groups||[];
+  box.innerHTML=gs.length
+    ?gs.map(g=>`<div style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-top:6px;display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div><b>${esc(g.threadID)}</b><br><span class="m">URL: ${esc(g.imageUrl)}</span></div>
+        <button class="stop" data-il="${esc(g.threadID)}" style="width:auto;margin:0;padding:8px 12px">Remove</button>
+      </div>`).join('')
+    :'Wala pang naka-lock na image.';
+  box.querySelectorAll('[data-il]').forEach(b=>b.addEventListener('click',async()=>{
+    try{await fetch('/api/imagelock/'+encodeURIComponent(b.dataset.il),{method:'DELETE',headers:{'x-admin':K}})}catch{}
+    toast('Removed ✓');ilLoad();
+  }));
+}
+async function ilSave(){
+  const threadID=gv('il-thread'), imageUrl=gv('il-url');
+  if(!threadID||!imageUrl)return toast('Kailangan ng thread ID at URL',true);
+  const r=await api('imagelock',{threadID,imageUrl,enabled:true});
+  if(r&&r.error)toast(r.error,true);else{toast('Saved ✓');$('il-url').value='';ilLoad()}
 }
 
 async function nlLoad(){
